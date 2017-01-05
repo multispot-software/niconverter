@@ -43,9 +43,6 @@ import numba
 import tables
 from tqdm import tqdm_notebook, tqdm
 
-from ._version import get_versions
-__version__ = get_versions()['version']
-
 
 def iter_chunksize(num_samples, chunksize):
     """Yield `chunksize` enough times to cover `num_samples`.
