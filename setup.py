@@ -1,15 +1,16 @@
 from setuptools import setup
+import versioneer
 
-__version__ = '0.1'
 
 setup(
     name = 'niconverter',
-    version=__version__,
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     author = 'Antonino Ingargiola',
     author_email = 'tritemio@gmail.com',
     url = 'https://github.com/tritemio/niconverter',
     download_url = 'https://github.com/tritemio/niconverter',
-    install_requires = ['phconvert'],
+    install_requires = ['phconvert', 'tqdm', 'numba'],
     license = 'MIT',
     description = ("Convert 48-spot smFRET data from NI-FGPA to Photon-HDF5."),
     platforms = ('Windows', 'Linux', 'Mac OS X'),
@@ -19,7 +20,7 @@ setup(
                  'Programming Language :: Python :: 3.5',
                  'Topic :: Scientific/Engineering',
                  ],
-    py_modules = ['niconverter'],
+    packages = ['niconverter'],
     keywords = ('single-molecule FRET smFRET biophysics file-format HDF5 '
                 'Photon-HDF5')
 )
