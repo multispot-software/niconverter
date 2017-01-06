@@ -81,7 +81,7 @@ def _read_header_NI_LV(fname):
     return meta
 
 
-def _detectformat(fname):
+def detectformat(fname):
     """Detect file type from the header and return format specifications.
     """
     with open(fname, 'rb') as f:
@@ -104,7 +104,7 @@ def _detectformat(fname):
     return dt, endianess, meta
 
 
-def _duration(ts_m, ts_unit):
+def duration(ts_m, ts_unit):
     """Compute measurement duration from list of corrected timestamps `ts_m`.
     """
     if isinstance(ts_m[0], list):
@@ -179,7 +179,7 @@ def read_raw_timestamps(fname, num_timestamps=-1):
     """Read `num_timestamps` timestamps and detectors from `fname`.
     """
     nbits = 24
-    dt, endianess, meta = _detectformat(fname)
+    dt, endianess, meta = detectformat(fname)
     if num_timestamps < meta['num_timestamps']:
         num_timestamps = meta['num_timestamps']
     f = open(fname, 'rb')
@@ -206,7 +206,7 @@ def ni96ch_process_inram(fname, chunksize=2**18, num_timestamps=-1, debug=False,
     """
     if inner_loop is None:
         inner_loop = _inner_loop2
-    dt, endianess, meta = _detectformat(fname)
+    dt, endianess, meta = detectformat(fname)
     if num_timestamps < meta['num_timestamps']:
         num_timestamps = meta['num_timestamps']
     nbits = 24
@@ -232,7 +232,7 @@ def ni96ch_process_inram(fname, chunksize=2**18, num_timestamps=-1, debug=False,
             ts.append(ts_chunk)
 
     # Compute acquisition duration
-    meta['acquisition_duration'] = _duration(timestamps_m, ts_unit)
+    meta['acquisition_duration'] = duration(timestamps_m, ts_unit)
     return None, timestamps_m, meta
 
 
@@ -271,7 +271,7 @@ def ni96ch_process(fname, chunksize=2**18, num_timestamps=-1, debug=False,
     """
     if inner_loop is None:
         inner_loop = _inner_loop2
-    dt, endianess, meta = _detectformat(fname)
+    dt, endianess, meta = detectformat(fname)
     if num_timestamps < meta['num_timestamps']:
         num_timestamps = meta['num_timestamps']
     nbits = 24
@@ -309,7 +309,7 @@ def ni96ch_process(fname, chunksize=2**18, num_timestamps=-1, debug=False,
                 assert (np.diff(ts_chunk) > 0).all()
 
     # Compute acquisition duration
-    meta['acquisition_duration'] = _duration(timestamps_m, ts_unit)
+    meta['acquisition_duration'] = duration(timestamps_m, ts_unit)
     h5file.flush()
     if close:
         h5file.close()
@@ -348,7 +348,7 @@ def ni96ch_process_spots(fname, chunksize=2**18, num_timestamps=-1, debug=False,
     """
     if inner_loop is None:
         inner_loop = _inner_loop2
-    dt, endianess, meta = _detectformat(fname)
+    dt, endianess, meta = detectformat(fname)
     if num_timestamps < meta['num_timestamps']:
         num_timestamps = meta['num_timestamps']
     nbits = 24
@@ -412,7 +412,7 @@ def ni96ch_process_spots(fname, chunksize=2**18, num_timestamps=-1, debug=False,
         det.append(last_det_chunks[i])
 
     # Compute acquisition duration
-    meta['acquisition_duration'] = _duration(timestamps_m, ts_unit)
+    meta['acquisition_duration'] = duration(timestamps_m, ts_unit)
     h5file.flush()
     if close:
         h5file.close()
