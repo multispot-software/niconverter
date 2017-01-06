@@ -356,7 +356,7 @@ def ni96ch_process_spots(fname, chunksize=2**18, num_timestamps=-1, debug=False,
     spots = np.arange(48)
     #nch = 2 * spots.size
     ts_unit = 1 / meta['clock_frequency']
-    h5fname = fname + '_raw_temp_spots.hdf5'
+    h5fname = fname[:-3] + 'hdf5'
 
     # Open file and position cursor after header
     f = open(fname, 'rb')
@@ -527,7 +527,7 @@ def create_ph5data_smFRET_48spots(
             excitation_wavelengths = excitation_wavelengths,
             excitation_cw = (False,),
             detection_wavelengths = detection_wavelengths,
-            #excitation_alternated = (False,)
+            excitation_alternated = (False,)
             )
 
     if setup != 'skip':
