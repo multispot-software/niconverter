@@ -15,7 +15,7 @@ There are two routes to create a Photon-HDF5 file as described next.
 - **Route 1**: the default, fast and scary. This single-step approach uses
   :func:`ni96ch_process_spots` which directly saves per-spot timestamps and
   detectors arrays with overflow correction. Photon-HDF5 files can be created
-  simply adding the file medata (calling :func:`create_ph5data_smFRET_48spots`
+  simply adding the file metadata (calling :func:`create_ph5data_smFRET_48spots`
   and then :func:`phconvert.save_photon_hdf5`). This approach is faster and
   does not create temporary files. However if you look at the implementation
   you can get dizzy. The only reason I trust it is because this approach was
