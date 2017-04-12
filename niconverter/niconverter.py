@@ -38,6 +38,7 @@ There are two routes to create a Photon-HDF5 file as described next.
 
 """
 
+from pathlib import Path
 import numpy as np
 import numba
 import tables
@@ -236,8 +237,8 @@ def ni96ch_process_inram(fname, chunksize=2**18, num_timestamps=-1, debug=False,
     return None, timestamps_m, meta
 
 
-def ni96ch_process(fname, chunksize=2**18, num_timestamps=-1, debug=False,
-                   close=False, inner_loop=None, comp_filter=None,
+def ni96ch_process(fname, out_path=None, chunksize=2**18, num_timestamps=-1,
+                   debug=False, close=False, inner_loop=None, comp_filter=None,
                    progrbar_widget=True):
     """Sort timestamps per-ch and correct overflow in NI-96ch data.
 
@@ -250,6 +251,8 @@ def ni96ch_process(fname, chunksize=2**18, num_timestamps=-1, debug=False,
     in little-endian order).
 
     Arguments:
+        out_path (string or pathlib.Path or None): name of the ouput HDF5 file.
+            If None, use same name as input file appending '_raw_temp.hdf5'.
         chunksize (int): input file is read in chunks (i.e. number of 32-bit
             words) of this size.
         num_timestamps (int): read at most `num_timestamps`. If negative read
@@ -269,6 +272,7 @@ def ni96ch_process(fname, chunksize=2**18, num_timestamps=-1, debug=False,
         - timestamps_m (list): list of pytables timetamps arrays
         - meta (dict): metadata extracted from the file
     """
+    fname = Path(fname)
     if inner_loop is None:
         inner_loop = _inner_loop2
     dt, endianess, meta = detectformat(fname)
@@ -278,7 +282,9 @@ def ni96ch_process(fname, chunksize=2**18, num_timestamps=-1, debug=False,
     ts_max = 2**nbits
     nch = meta['nchannels']
     ts_unit = 1 / meta['clock_frequency']
-    h5fname = fname + '_raw_temp.hdf5'
+    if out_path is None:
+        out_path = Path(fname.parent, fname.stem + '_raw_temp.hdf5')
+    out_path = Path(out_path)
 
     # Open file and position cursor after header
     f = open(fname, 'rb')
@@ -287,7 +293,7 @@ def ni96ch_process(fname, chunksize=2**18, num_timestamps=-1, debug=False,
     # Output file
     if comp_filter is None:
         comp_filter = tables.Filters(complevel=6, complib='blosc')
-    h5file = tables.open_file(h5fname, mode="w", filters=comp_filter)
+    h5file = tables.open_file(str(out_path), mode="w", filters=comp_filter)
     for ch in range(nch):
         h5file.create_earray('/', 'timestamps%d' % ch, chunkshape=(chunksize,),
                              obj=np.array([], dtype=np.int64))
@@ -316,7 +322,7 @@ def ni96ch_process(fname, chunksize=2**18, num_timestamps=-1, debug=False,
     return h5file, timestamps_m, meta
 
 
-def ni96ch_process_spots(fname, chunksize=2**18, num_timestamps=-1, debug=False,
+def ni96ch_process_spots(fname, out_path=None, chunksize=2**18, num_timestamps=-1, debug=False,
                          close=False, inner_loop=None, comp_filter=None,
                          progrbar_widget=True):
     """Sort timestamps per-spot and correct overflow in NI-96ch data.
@@ -327,7 +333,9 @@ def ni96ch_process_spots(fname, chunksize=2**18, num_timestamps=-1, debug=False,
     in little-endian order).
 
     Arguments:
-        fname (string): name of the input data file.
+        fname (string or pathlib.Path): name of the input data file.
+        out_path (string or pathlib.Path or None): name of the ouput HDF5 file.
+            If None, use same name as input file changing the extension to hdf5.
         chunksize (int): input file is read in chunks (i.e. number of 32-bit
             words) of this size.
         num_timestamps (int): read at most `num_timestamps`. If negative read
@@ -346,6 +354,7 @@ def ni96ch_process_spots(fname, chunksize=2**18, num_timestamps=-1, debug=False,
         - h5file (pytables file): the handle for the pytables file
         - meta (dict): metadata extracted from the file
     """
+    fname = Path(fname)
     if inner_loop is None:
         inner_loop = _inner_loop2
     dt, endianess, meta = detectformat(fname)
@@ -356,7 +365,9 @@ def ni96ch_process_spots(fname, chunksize=2**18, num_timestamps=-1, debug=False,
     spots = np.arange(48)
     #nch = 2 * spots.size
     ts_unit = 1 / meta['clock_frequency']
-    h5fname = fname[:-3] + 'hdf5'
+    if out_path is None:
+        out_path = fname.with_suffix('.hdf5')
+    out_path = Path(out_path)
 
     # Open file and position cursor after header
     f = open(fname, 'rb')
@@ -365,7 +376,7 @@ def ni96ch_process_spots(fname, chunksize=2**18, num_timestamps=-1, debug=False,
     # Output file
     if comp_filter is None:
         comp_filter = tables.Filters(complevel=6, complib='zlib')
-    h5file = tables.open_file(h5fname, mode="w", filters=comp_filter)
+    h5file = tables.open_file(str(out_path), mode="w", filters=comp_filter)
     for spot in spots:
         h5file.create_earray('/photon_data%d' % spot, 'timestamps',
                              createparents=True, chunkshape=(chunksize,),
@@ -533,12 +544,17 @@ def create_ph5data_smFRET_48spots(
     if setup != 'skip':
         data['setup'] = setup
 
-    return _fill_photon_data_tables(data, h5file, ts_unit)
+    return fill_photon_data_tables(data, h5file, ts_unit)
 
 
-def _fill_photon_data_tables(data, h5file, ts_unit):
+def fill_photon_data_tables(data, h5file, ts_unit, measurement_specs=None):
     """Fill the `data` dict with "photon_data" taken from h5file.
     """
+    if measurement_specs is None:
+        measurement_specs = dict(
+            measurement_type = 'smFRET',
+            detectors_specs = dict(spectral_ch1 = 0, spectral_ch2 = 1))
+
     ts_list, A_em = get_photon_data_arr(h5file, spots=range(48))
 
     for ich, (times, a_em) in enumerate(zip(ts_list, A_em)):
@@ -549,8 +565,5 @@ def _fill_photon_data_tables(data, h5file, ts_unit):
                 timestamps_specs = dict(timestamps_unit=ts_unit),
                 detectors = a_em,    # a pytables array!
 
-                measurement_specs = dict(
-                    measurement_type = 'smFRET',
-                    detectors_specs = dict(spectral_ch1 = 0,
-                                           spectral_ch2 = 1)))})
+                measurement_specs = measurement_specs)})
     return data
