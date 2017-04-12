@@ -567,3 +567,79 @@ def fill_photon_data_tables(data, h5file, ts_unit, measurement_specs=None):
 
                 measurement_specs = measurement_specs)})
     return data
+
+
+def populate_metadata_smFRET_48spots(metadata):
+    """Populate metadata for a smFRET-48spot setup (either single-laser or PAX).
+
+    Automatically populate the "/setup" group for a smFRET-48spot setup.
+    If length of `excitation_alternated` in the input metadata if 1, then
+    single-laser (532nm) excitation is assumed. If the length is 2, then
+    PAX is assumed.
+    This function also fills: /sample/num_dyes, /provenance/filename,
+    provenance/software. /acquisition_duration is rounded to 1 decimal.
+    It does not fill indentity group with authors and/or affiliations.
+
+    Arguments:
+        metadata (dict): a nested dictionary representing some fields in a
+            Photon-HDF5 file. It must contain a list/tuple of bools
+            in `metadata['setup']['excitation_alternated']`. It must also
+            contain `metadata['acquisition_duration']`.
+
+    Returns:
+        A new dictionary (copy) extending the input metadata.
+    """
+    metadata = metadata.copy()
+    setup = metadata['setup']
+    if len(setup['excitation_alternated']) == 1:
+        kind = 'single-laser smFRET'
+    elif len(setup['excitation_alternated']) == 2:
+        kind = 'PAX'
+    else:
+        raise ValueError('excitation_alternated should be of len 1 or 2.')
+
+    default_setup = dict(
+        num_spectral_ch = 2,
+        num_polarization_ch = 1,
+        num_split_ch = 1,
+        lifetime = False,
+        num_spots = 48,
+        num_pixels = 96,
+        detection_wavelengths = [580e-9, 660e-9],
+        )
+    if kind == 'PAX':
+        # smFRET-PAX (532nm CW, 628nm alternated)
+        default_setup.update(
+            excitation_wavelengths = [532e-9, 628e-9],
+            excitation_cw = [True, True],
+            modulated_excitation = True,
+            excitation_alternated = [False, True]
+            )
+    else:
+        # Single-laser smFRET with 532nm excitation
+        default_setup.update(
+            excitation_wavelengths = [532e-9],
+            excitation_cw = [True],
+            modulated_excitation = False,
+            excitation_alternated = [False],
+            )
+
+    # Fill-in only the setup fields not present in metadata
+    for k in default_setup.keys():
+        setup[k] = setup.get(k, default_setup[k])
+
+    # Sample group
+    if 'sample' in metadata:
+        sample = metadata['sample']
+        sample['num_dyes'] = len(sample['dye_names'].split(','))
+
+    # Create or update provenance group
+    sw = 'LabVIEW MultiCounterProject/Multiple Counters UI v8_96 ch_Generic (NI-FPGA)'
+    provenance = metadata.get('provenance', dict())
+    provenance.update(filename=str(source_filename), software=sw)
+
+    # Other metadata
+    acq_duration = 'acquisition_duration'
+    metadata[acq_duration] = np.round(metadata[acq_duration], 1)
+
+    return metadata
