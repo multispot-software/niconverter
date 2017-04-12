@@ -15,10 +15,11 @@ There are two routes to create a Photon-HDF5 file as described next.
 - **Route 1**: the default, fast and scary. This single-step approach uses
   :func:`ni96ch_process_spots` which directly saves per-spot timestamps and
   detectors arrays with overflow correction. Photon-HDF5 files can be created
-  simply adding the file metadata (calling :func:`create_ph5data_smFRET_48spots`
-  and then :func:`phconvert.save_photon_hdf5`). This approach is faster and
-  does not create temporary files. However if you look at the implementation
-  you can get dizzy. The only reason I trust it is because this approach was
+  simply adding the file metadata (calling
+  :func:`populate_metadata_smFRET_48spots` and then
+  :func:`phconvert.save_photon_hdf5`). This approach is faster and
+  does not create temporary files. However, the implementation is quite
+  complex and obscure. The only reason I trust it is because this approach was
   heavily tested using *Route 2*.
 
 - **Route 2**: slow/bulky but trustworty. This approach involves correcting the
@@ -569,7 +570,7 @@ def fill_photon_data_tables(data, h5file, ts_unit, measurement_specs=None):
     return data
 
 
-def populate_metadata_smFRET_48spots(metadata):
+def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration):
     """Populate metadata for a smFRET-48spot setup (either single-laser or PAX).
 
     Automatically populate the "/setup" group for a smFRET-48spot setup.
@@ -577,17 +578,19 @@ def populate_metadata_smFRET_48spots(metadata):
     single-laser (532nm) excitation is assumed. If the length is 2, then
     PAX is assumed.
     This function also fills: /sample/num_dyes, /provenance/filename,
-    provenance/software. /acquisition_duration is rounded to 1 decimal.
-    It does not fill indentity group with authors and/or affiliations.
+    /provenance/software. /acquisition_duration is rounded to 1 decimal.
+    It does not fill identity group with authors and/or affiliations.
 
     Arguments:
         metadata (dict): a nested dictionary representing some fields in a
             Photon-HDF5 file. It must contain a list/tuple of bools
-            in `metadata['setup']['excitation_alternated']`. It must also
-            contain `metadata['acquisition_duration']`.
+            in `metadata['setup']['excitation_alternated']`.
+        orig_filename (pathlib.Path or string): path of the original DAT file,
+            to be stored in /provenance/filename.
+        acq_duration (float): acquisition duration in seconds.
 
     Returns:
-        A new dictionary (copy) extending the input metadata.
+        A new dictionary (copy) with the complete metadata.
     """
     metadata = metadata.copy()
     setup = metadata['setup']
@@ -636,10 +639,9 @@ def populate_metadata_smFRET_48spots(metadata):
     # Create or update provenance group
     sw = 'LabVIEW MultiCounterProject/Multiple Counters UI v8_96 ch_Generic (NI-FPGA)'
     provenance = metadata.get('provenance', dict())
-    provenance.update(filename=str(source_filename), software=sw)
+    provenance.update(filename=str(orig_filename), software=sw)
 
     # Other metadata
-    acq_duration = 'acquisition_duration'
-    metadata[acq_duration] = np.round(metadata[acq_duration], 1)
+    metadata['acquisition_duration'] = np.round(acq_duration, 1)
 
     return metadata
