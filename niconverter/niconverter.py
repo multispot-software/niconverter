@@ -319,7 +319,7 @@ def ni96ch_process(fname, out_path=None, chunksize=2**18, num_timestamps=-1,
     h5file.flush()
     if close:
         h5file.close()
-    return h5file, timestamps_m, meta
+    return h5file, meta
 
 
 def ni96ch_process_spots(fname, out_path=None, chunksize=2**18, num_timestamps=-1, debug=False,
