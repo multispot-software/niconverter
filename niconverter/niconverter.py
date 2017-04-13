@@ -462,9 +462,11 @@ def merge_timestamps(t1, t2):
 
 
 def save_timestamps_detectors_48ch(timestamps_m, h5file, chunksize=2**18,
-                                   progrbar_widget=True):
+                                   comp_filter=None, progrbar_widget=True):
     """Save per-spot timestamps/detectors from a list of per-ch timestamps.
     """
+    if comp_filter is None:
+        comp_filter = tables.Filters(complevel=6, complib='blosc')
     spots, D_ch, A_ch = get_spot_ch_map_48spots()
     progressbar = tqdm_notebook if progrbar_widget else tqdm
     for ch_a, ch_d in progressbar(zip(A_ch, D_ch), total=48):
@@ -472,10 +474,11 @@ def save_timestamps_detectors_48ch(timestamps_m, h5file, chunksize=2**18,
         td = timestamps_m[ch_d][:]
         ta = timestamps_m[ch_a][:]
         tm, a_em = merge_timestamps(td, ta)
+        kws = dict(chunkshape=(chunksize,), filters=comp_filter)
         h5file.create_carray('/photon_data%d' % spot, 'timestamps', obj=tm,
-                             createparents=True, chunkshape=(chunksize,))
-        h5file.create_carray('/photon_data%d' % spot, 'detectors',
-                             chunkshape=(chunksize,), obj=a_em)
+                             createparents=True, **kws)
+        h5file.create_carray('/photon_data%d' % spot, 'detectors', obj=a_em,
+                             **kws)
     h5file.flush()
     ts_list , A_em = get_photon_data_arr(h5file, spots)
     detectors_ids = np.empty(96, dtype=np.uint8)
