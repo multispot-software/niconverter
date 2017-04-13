@@ -12,30 +12,29 @@ has the highest bit set to 1.
 
 There are two routes to create a Photon-HDF5 file as described next.
 
-- **Route 1**: the default, fast and scary. This single-step approach uses
-  :func:`ni96ch_process_spots` which directly saves per-spot timestamps and
-  detectors arrays with overflow correction. Photon-HDF5 files can be created
-  simply adding the file metadata (calling
-  :func:`populate_metadata_smFRET_48spots` and then
-  :func:`phconvert.save_photon_hdf5`). This approach is faster and
+- **Route 1**: This single-step approach uses :func:`ni96ch_process_spots`
+  which directly saves per-spot timestamps and detectors arrays with
+  overflow correction. Photon-HDF5 files can be created by adding metadata
+  to the same HDF5 file (callin g :func:`populate_metadata_smFRET_48spots`
+  and then :func:`phconvert.save_photon_hdf5`). This approach
   does not create temporary files. However, the implementation is quite
-  complex and obscure. The only reason I trust it is because this approach was
-  heavily tested using *Route 2*.
+  complex and hard to test directly. The only reason I trust it is because
+  this approach was heavily tested using *Route 2*.
 
-- **Route 2**: slow/bulky but trustworty. This approach involves correcting the
-  overflow and saving separate timestamps arrays for each channel (not spot!)
-  in a temporary file. This steps is done calling :func:`ni96ch_process`.
-  Next, we merge the two timestamps arrays for each spot
-  and create the detectors arrays. This step is done calling
+- **Route 2**: This approach involves correcting the overflow and saving
+  separate timestamps arrays for each channel (not spot!) into a temporary
+  file. This steps is done calling :func:`ni96ch_process`.
+  Next, we merge the two timestamps arrays for each spot and create the
+  detectors arrays. This step is done calling
   :func:`save_timestamps_detectors_48ch`. The alternative function
   :func:`ni96ch_process_inram` save the separate timestamps arrays in RAM,
-  and can be used to test the chuncking logic. This route can also use two
-  implementations of the overflow correction. One, separates the channels
-  first and then corrects overflows using numpy. The second, corrects the
-  overflow without separating the channels and uses numba. Since it requires
-  saving a temporary file this approach is slower but allows to check
-  the conversion step-by-step.
-
+  and can be used to test the chunking logic. With this route we can
+  use two different implementations of the overflow correction. The first,
+  separates the channels first and then corrects overflows using numpy.
+  The second, corrects the overflow without separating the channels and
+  uses numba to speedup the computation.
+  This allows splitting the conversion in steps that can be checked
+  individually.
 
 """
 
