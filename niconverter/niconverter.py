@@ -550,13 +550,26 @@ def create_ph5data_smFRET_48spots(
     return fill_photon_data_tables(data, h5file, ts_unit)
 
 
-def fill_photon_data_tables(data, h5file, ts_unit, measurement_specs=None):
+def fill_photon_data_tables(data, h5file, ts_unit, measurement_type='smFRET',
+                            measurement_specs=None):
     """Fill the `data` dict with "photon_data" taken from h5file.
     """
     if measurement_specs is None:
-        measurement_specs = dict(
-            measurement_type = 'smFRET',
-            detectors_specs = dict(spectral_ch1 = 0, spectral_ch2 = 1))
+        if measurement_type == 'smFRET':
+            measurement_specs = dict(
+                measurement_type='smFRET',
+                detectors_specs={'spectral_ch1': 0, 'spectral_ch2': 1})
+        elif 'PAX' in measurement_type:
+            measurement_specs = dict(
+                measurement_type='generic',
+                detectors_specs={'spectral_ch1': 0, 'spectral_ch2': 1},
+                alex_period=4000)
+        else:
+            raise ValueError('measurement_type "%s" not recognized.' %
+                             measurement_type)
+    else:
+        print('- measurement_specs specified, ignoring the argument '
+              'measurement_type')
 
     ts_list, A_em = get_photon_data_arr(h5file, spots=range(48))
 
