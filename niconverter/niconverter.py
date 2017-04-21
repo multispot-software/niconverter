@@ -671,9 +671,9 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration,
     metadata = metadata.copy()
     setup = metadata['setup']
     if len(setup['excitation_alternated']) == 1:
-        kind = 'single-laser smFRET'
+        meas_type = 'smFRET'
     elif len(setup['excitation_alternated']) == 2:
-        kind = 'PAX'
+        meas_type = 'PAX'
     else:
         raise ValueError('excitation_alternated should be of len 1 or 2.')
 
@@ -685,9 +685,9 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration,
         num_spots = 48,
         num_pixels = 96,
         detection_wavelengths = [580e-9, 660e-9],
-        detectors = get_detectors(h5file, dcr_fname),
+        detectors = get_detectors_group(h5file, dcr_fname),
         )
-    if kind == 'PAX':
+    if meas_type == 'PAX':
         # smFRET-PAX (532nm CW, 628nm alternated)
         default_setup.update(
             excitation_wavelengths = [532e-9, 628e-9],
@@ -721,4 +721,4 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration,
     # Other metadata
     metadata['acquisition_duration'] = np.round(acq_duration, 1)
 
-    return metadata
+    return metadata, meas_type
