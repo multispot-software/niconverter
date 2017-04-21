@@ -40,6 +40,7 @@ There are two routes to create a Photon-HDF5 file as described next.
 
 from pathlib import Path
 import numpy as np
+import pandas as pd
 import numba
 import tables
 from tqdm import tqdm_notebook, tqdm
@@ -508,6 +509,62 @@ def get_photon_data_arr(h5file, spots):
     return ts_list, A_em
 
 
+def get_counts(h5file):
+    t, aem = get_photon_data_arr(h5file, spots=np.arange(48))
+    det_spot = np.repeat(np.arange(48, dtype='uint8'), 2)
+    counts = np.zeros(96, dtype='int64')
+    for i, det in enumerate(aem):
+        vals, cnts = np.unique(det[:], return_counts=True)
+        for v, c in zip(vals, cnts):
+            counts[np.where(det_spot == i)[0][v]] = c
+    return counts
+
+
+def get_dcr(fname='DCR_N2Top_N5Bott.csv'):
+    dcr_df = pd.read_csv(fname, index_col=0).round(1)
+    dcr = np.zeros(96)
+    dcr[::2] = dcr_df.donor
+    dcr[1::2] = dcr_df.acceptor
+    return dcr
+
+
+def get_spad_positions():
+    spots, d_ch, a_ch = get_spot_ch_map_48spots()
+    spotsv_a = spots.reshape(4, 12).T[::-1, ::-1]
+    spotsv_d = spots.reshape(4, 12).T[::-1] + 48
+    positions = np.zeros((96, 2), dtype='int8')
+    for i in a_ch:
+        positions[i] = np.where(spotsv_a == i)
+    for i in d_ch:
+        positions[i] = np.where(spotsv_d == i)
+    return positions
+
+
+def get_id_hardware():
+    spots, d_ch, a_ch = get_spot_ch_map_48spots()
+    id_hardware = np.zeros(96, dtype='uint8')
+    id_hardware[::2] = d_ch
+    id_hardware[1::2] = a_ch
+    return id_hardware
+
+
+def get_detectors_group(h5file, dcr_fname=None):
+    ids = np.tile(np.array([0, 1], dtype='uint8'), 48)
+    id_hardware = get_id_hardware()
+    positions = get_spad_positions()
+    det_spot = np.repeat(np.arange(48, dtype='uint8'), 2)
+    counts = get_counts(h5file)
+    detectors_group = dict(
+        id = ids,
+        id_hardware = id_hardware,
+        counts = counts,
+        spot = det_spot,
+        position = positions,
+    )
+    if dcr_fname is not None:
+        detectors_group['dcr'] = get_dcr(dcr_fname)
+    return detectors_group
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Functions to create a Photon-HDF5
 #
@@ -585,7 +642,8 @@ def fill_photon_data_tables(data, h5file, ts_unit, measurement_type='smFRET',
     return data
 
 
-def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration):
+def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration,
+                                     h5file, dcr_fname=None):
     """Populate metadata for a smFRET-48spot setup (either single-laser or PAX).
 
     Automatically populate the "/setup" group for a smFRET-48spot setup.
@@ -603,6 +661,9 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration):
         orig_filename (pathlib.Path or string): path of the original DAT file,
             to be stored in /provenance/filename.
         acq_duration (float): acquisition duration in seconds.
+        h5file (tables.File): file containing the timestamps.
+        dcr_fname (string or None): filename of file containing DCR.
+            If not None, fills the field /setup/detectors/dcr.
 
     Returns:
         A new dictionary (copy) with the complete metadata.
@@ -624,6 +685,7 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration):
         num_spots = 48,
         num_pixels = 96,
         detection_wavelengths = [580e-9, 660e-9],
+        detectors = get_detectors(h5file, dcr_fname),
         )
     if kind == 'PAX':
         # smFRET-PAX (532nm CW, 628nm alternated)
