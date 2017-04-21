@@ -516,7 +516,7 @@ def get_counts(h5file):
     for i, det in enumerate(aem):
         vals, cnts = np.unique(det[:], return_counts=True)
         for v, c in zip(vals, cnts):
-            counts[np.where(det_spot == i)[0][v]] = c
+            counts[np.where(det_spot == i)[0][int(v)]] = c
     return counts
 
 
