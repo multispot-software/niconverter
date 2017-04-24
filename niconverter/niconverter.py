@@ -532,11 +532,15 @@ def get_spad_positions():
     spots, d_ch, a_ch = get_spot_ch_map_48spots()
     spotsv_a = spots.reshape(4, 12).T[::-1, ::-1]
     spotsv_d = spots.reshape(4, 12).T[::-1] + 48
-    positions = np.zeros((96, 2), dtype='int8')
-    for i in a_ch:
-        positions[i] = np.where(spotsv_a == i)
-    for i in d_ch:
-        positions[i] = np.where(spotsv_d == i)
+    positions_d, positions_a = [], []
+    for icha, ichd in zip(a_ch, d_ch):
+        positions_a.append(np.where(spotsv_a == icha))
+        positions_d.append(np.where(spotsv_d == ichd))
+    positions_d = np.array(positions_d).squeeze()
+    positions_a = np.array(positions_a).squeeze()
+    positions = np.zeros((96, 2), dtype='uint8')
+    positions[::2] = positions_d
+    positions[1::2] = positions_a
     return positions
 
 
