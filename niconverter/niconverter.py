@@ -611,40 +611,21 @@ def create_ph5data_smFRET_48spots(
     return fill_photon_data_tables(data, h5file, ts_unit)
 
 
-def fill_photon_data_tables(data, h5file, ts_unit, meas_type='smFRET',
-                            measurement_specs=None):
+def fill_photon_data_tables(data, h5file, ts_unit, measurement_specs=None):
     """Fill the `data` dict with "photon_data" taken from h5file.
-
 
     Arguments:
         data (dict): a nested dict containing all the Photon-HDF5 data,
             except for the photon_data groups.
         h5file (tables.File): an open pytables file containing "photon_data"
         ts_unit (float): timestamp units in seconds.
-        meas_type (string): Valid values: 'smFRET', 'PAX'. The type of the
-            measurement. This value is used when measurement_specs is None
-            to create a default measurement_specs.
-        measurement_specs (dict or None): measurement_specs to be added to each
+        measurement_specs (dict): measurement_specs to be added to each
             photon_data group in the Photon-HDF5 file.
-            If None a default measurement_specs is created based on `meas_type`.
+
     Returns:
         The input dict `data` filled with photon_data groups from `h5file`.
         The arrays in photon_data are references to pytables arrays.
     """
-    if measurement_specs is None:
-        # Create a default measurement_specs when not provided
-        if meas_type == 'smFRET':
-            measurement_specs = dict(
-                measurement_type='smFRET')
-        elif 'PAX' in meas_type:
-            measurement_specs = dict(
-                measurement_type='generic',
-                alex_period=4000)
-    if 'detectors_specs' not in measurement_specs:
-        # Set default detectors_specs when not provided
-        detectors_specs = {'spectral_ch1': 0, 'spectral_ch2': 1}
-        measurement_specs['detectors_specs'] = detectors_specs
-
     ts_list, A_em = get_photon_data_arr(h5file, spots=range(48))
 
     for ich, (times, a_em) in enumerate(zip(ts_list, A_em)):
@@ -663,7 +644,7 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration,
     """Populate metadata for a smFRET-48spot setup (either single-laser or PAX).
 
     Automatically populate the "/setup" group for a smFRET-48spot setup.
-    If length of `excitation_alternated` in the input metadata if 1, then
+    If length of `excitation_alternated` in the input metadata is 1, then
     single-laser (532nm) excitation is assumed. If the length is 2, then
     PAX is assumed.
     This function also fills: /sample/num_dyes, /provenance/filename,
@@ -682,7 +663,10 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration,
             If not None, fills the field /setup/detectors/dcr.
 
     Returns:
-        A new dictionary (copy) with the complete metadata.
+        Two dictionaries. The first is the complete metadata of a Photon-HDF5
+        file except that the photon_data groups are not present.
+        The second is the measurement_specs group which should go in
+        photon_data.
     """
     metadata = metadata.copy()
     setup = metadata['setup']
@@ -701,8 +685,7 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration,
         num_spots = 48,
         num_pixels = 96,
         detection_wavelengths = [580e-9, 660e-9],
-        detectors = get_detectors_group(h5file, dcr_fname),
-        )
+        detectors = get_detectors_group(h5file, dcr_fname))
     if meas_type == 'PAX':
         # smFRET-PAX (532nm CW, 628nm alternated)
         default_setup.update(
@@ -711,6 +694,8 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration,
             modulated_excitation = True,
             excitation_alternated = [False, True]
             )
+        def_measurement_specs = dict(measurement_type='generic',
+                                     alex_period=4000)
     else:
         # Single-laser smFRET with 532nm excitation
         default_setup.update(
@@ -719,10 +704,20 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration,
             modulated_excitation = False,
             excitation_alternated = [False],
             )
+        def_measurement_specs = dict(measurement_type='smFRET')
+    # Add this for both smFRET and PAX
+    def_measurement_specs['detectors_specs'] = {'spectral_ch1': 0,
+                                                'spectral_ch2': 1}
 
     # Fill-in only the setup fields not present in metadata
     for k in default_setup.keys():
         setup[k] = setup.get(k, default_setup[k])
+
+    # Fill-in only the measurement_specs fields not present in metadata
+    measurement_specs = metadata.pop('measurement_specs', {})
+    for k in def_measurement_specs.keys():
+        if k not in measurement_specs:
+            measurement_specs[k] = def_measurement_specs[k]
 
     # Sample group
     if 'sample' in metadata:
@@ -730,11 +725,12 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration,
         sample['num_dyes'] = len(sample['dye_names'].split(','))
 
     # Create or update provenance group
-    sw = 'LabVIEW MultiCounterProject/Multiple Counters UI v8_96 ch_Generic (NI-FPGA)'
+    sw = ('LabVIEW MultiCounterProject/Multiple Counters UI v8_96 ch_Generic '
+          '(NI-FPGA)')
     provenance = metadata.get('provenance', dict())
     provenance.update(filename=str(orig_filename), software=sw)
 
     # Other metadata
     metadata['acquisition_duration'] = np.round(acq_duration, 1)
 
-    return metadata, meas_type
+    return metadata, measurement_specs
