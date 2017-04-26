@@ -611,26 +611,39 @@ def create_ph5data_smFRET_48spots(
     return fill_photon_data_tables(data, h5file, ts_unit)
 
 
-def fill_photon_data_tables(data, h5file, ts_unit, measurement_type='smFRET',
+def fill_photon_data_tables(data, h5file, ts_unit, meas_type='smFRET',
                             measurement_specs=None):
     """Fill the `data` dict with "photon_data" taken from h5file.
+
+
+    Arguments:
+        data (dict): a nested dict containing all the Photon-HDF5 data,
+            except for the photon_data groups.
+        h5file (tables.File): an open pytables file containing "photon_data"
+        ts_unit (float): timestamp units in seconds.
+        meas_type (string): Valid values: 'smFRET', 'PAX'. The type of the
+            measurement. This value is used when measurement_specs is None
+            to create a default measurement_specs.
+        measurement_specs (dict or None): measurement_specs to be added to each
+            photon_data group in the Photon-HDF5 file.
+            If None a default measurement_specs is created based on `meas_type`.
+    Returns:
+        The input dict `data` filled with photon_data groups from `h5file`.
+        The arrays in photon_data are references to pytables arrays.
     """
     if measurement_specs is None:
-        if measurement_type == 'smFRET':
+        # Create a default measurement_specs when not provided
+        if meas_type == 'smFRET':
             measurement_specs = dict(
-                measurement_type='smFRET',
-                detectors_specs={'spectral_ch1': 0, 'spectral_ch2': 1})
-        elif 'PAX' in measurement_type:
+                measurement_type='smFRET')
+        elif 'PAX' in meas_type:
             measurement_specs = dict(
                 measurement_type='generic',
-                detectors_specs={'spectral_ch1': 0, 'spectral_ch2': 1},
                 alex_period=4000)
-        else:
-            raise ValueError('measurement_type "%s" not recognized.' %
-                             measurement_type)
-    else:
-        print('- measurement_specs specified, ignoring the argument '
-              'measurement_type')
+    if 'detectors_specs' not in measurement_specs:
+        # Set default detectors_specs when not provided
+        detectors_specs = {'spectral_ch1': 0, 'spectral_ch2': 1}
+        measurement_specs['detectors_specs'] = detectors_specs
 
     ts_list, A_em = get_photon_data_arr(h5file, spots=range(48))
 
@@ -638,11 +651,10 @@ def fill_photon_data_tables(data, h5file, ts_unit, measurement_type='smFRET',
         data.update(
             {'photon_data%d' % ich:
              dict(
-                timestamps = times,  # a pytables array!
-                timestamps_specs = dict(timestamps_unit=ts_unit),
-                detectors = a_em,    # a pytables array!
-
-                measurement_specs = measurement_specs)})
+                 timestamps=times,  # a pytables array!
+                 timestamps_specs=dict(timestamps_unit=ts_unit),
+                 detectors=a_em,    # a pytables array!
+                 measurement_specs=measurement_specs)})
     return data
 
 
