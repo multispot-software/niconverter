@@ -56,8 +56,8 @@ def iter_chunksize(num_samples, chunksize):
 def iter_chunk_slice(num_samples, chunksize):
     """Yield slices for iterating over an array in chunks.
 
-    Each iteration returns a slice of size `chunksize`. The itrataion terminates
-    when the last slice includes the index (num_sample - 1).
+    Each iteration returns a slice of size `chunksize`. The iteration
+    terminates when the last slice includes the index (num_sample - 1).
     """
     i = 0
     for c_size in iter_chunksize(num_samples, chunksize):
@@ -233,9 +233,10 @@ def ni96ch_process_inram(fname, chunksize=2**18, num_timestamps=-1, debug=False,
         for ts, ts_chunk in zip(timestamps_m, ts_chunks):
             ts.append(ts_chunk)
 
+    ts_m = [np.hstack(t) for t in timestamps_m if len(t) > 0]
     # Compute acquisition duration
-    meta['acquisition_duration'] = duration(timestamps_m, ts_unit)
-    return None, timestamps_m, meta
+    meta['acquisition_duration'] = duration(ts_m, ts_unit)
+    return None, ts_m, meta
 
 
 def ni96ch_process(fname, out_path=None, chunksize=2**18, num_timestamps=-1,
