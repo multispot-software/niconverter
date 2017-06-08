@@ -11,3 +11,8 @@ For more info see the niconverter module docstring.
 To install, download the repository, enter the source folder and type:
 
 `pip install .`
+
+----
+Copyright (C) 2017 The Regents of the University of California, Antonino Ingargiola and contributors.
+
+*This work was supported by NIH grants R01 GM069709 and R01 GM095904.*
