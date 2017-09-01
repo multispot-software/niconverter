@@ -629,13 +629,14 @@ def fill_photon_data_tables(data, h5file, ts_unit, measurement_specs=None):
     ts_list, A_em = get_photon_data_arr(h5file, spots=range(48))
 
     for ich, (times, a_em) in enumerate(zip(ts_list, A_em)):
-        data.update(
-            {'photon_data%d' % ich:
-             dict(
-                 timestamps=times,  # a pytables array!
-                 timestamps_specs=dict(timestamps_unit=ts_unit),
-                 detectors=a_em,    # a pytables array!
-                 measurement_specs=measurement_specs)})
+        ph_data = dict(
+            timestamps=times,  # a pytables array!
+            timestamps_specs=dict(timestamps_unit=ts_unit),
+            detectors=a_em,    # a pytables array!
+        )
+        if measurement_specs is not None:
+            ph_data['measurement_specs'] = measurement_specs
+        data.update({'photon_data%d' % ich: ph_data})
     return data
 
 
