@@ -696,7 +696,7 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration,
             excitation_alternated = [False, True]
             )
         def_measurement_specs = dict(measurement_type='generic',
-                                     alex_period=4000)
+                                     alex_period=4096)
     else:
         # Single-laser smFRET with 532nm excitation
         default_setup.update(
