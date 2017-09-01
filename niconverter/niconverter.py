@@ -603,7 +603,8 @@ def create_ph5data_smFRET_48spots(
             excitation_wavelengths = excitation_wavelengths,
             excitation_cw = (False,),
             detection_wavelengths = detection_wavelengths,
-            excitation_alternated = (False,)
+            excitation_alternated = (False,),
+            detectors = get_detectors_group(h5file)
             )
 
     if setup != 'skip':
