@@ -141,7 +141,8 @@ def _inner_loop1(detectors, timestamps, t_start, overflow, nch):
     return timestamps_ch
 
 
-@numba.jit('int64[:](uint8[:], int64[:], int64[:], int64)', nopython=True, nogil=True)
+@numba.jit('int64[:](uint8[:], int64[:], int64[:], int64)',
+           nopython=True, nogil=True)
 def _overflow_correct_allch(detectors, timestamps, t_start, overflow):
     """Apply overflow correction to all channels."""
     overflow_corr = t_start
@@ -202,8 +203,8 @@ def _read_chunk(f, chunksize, dt, endianess, nbits):
     return timestamps, det
 
 
-def ni96ch_process_inram(fname, chunksize=2**18, num_timestamps=-1, debug=False,
-                         inner_loop=None, progrbar_widget=True):
+def ni96ch_process_inram(fname, chunksize=2**18, num_timestamps=-1,
+                         debug=False, inner_loop=None, progrbar_widget=True):
     """Sort timestamps per-ch and correct overflow in NI-96ch data.
     """
     if inner_loop is None:
@@ -244,10 +245,10 @@ def ni96ch_process(fname, out_path=None, chunksize=2**18, num_timestamps=-1,
                    progrbar_widget=True):
     """Sort timestamps per-ch and correct overflow in NI-96ch data.
 
-    This function separates each single detector channel and corrects overflows.
-    The 96 arrays are saved to a (hopefully temporary) HDF5 file. To create
-    Photon-HDF5 files, channels pairs (i.e. Donor-Acceptor) need to be merged.
-    This function auto-detects whether the file is saved by LabVIEW
+    This function separates each single detector channel and corrects
+    overflows. The 96 arrays are saved to a (hopefully temporary) HDF5 file.
+    To create Photon-HDF5 files, channels pairs (i.e. Donor-Acceptor) need to
+    be merged. This function auto-detects whether the file is saved by LabVIEW
     MultiCounterProject (so it has a 3-lines header and timestamps in
     big-endian order) or by LabVIEW FPGA_96ch project (no header, timestamps
     in little-endian order).
@@ -324,7 +325,8 @@ def ni96ch_process(fname, out_path=None, chunksize=2**18, num_timestamps=-1,
     return h5file, meta
 
 
-def ni96ch_process_spots(fname, out_path=None, chunksize=2**18, num_timestamps=-1, debug=False,
+def ni96ch_process_spots(fname, out_path=None, chunksize=2**18,
+                         num_timestamps=-1, debug=False,
                          close=False, inner_loop=None, comp_filter=None,
                          progrbar_widget=True):
     """Sort timestamps per-spot and correct overflow in NI-96ch data.
@@ -365,7 +367,6 @@ def ni96ch_process_spots(fname, out_path=None, chunksize=2**18, num_timestamps=-
     nbits = 24
     ts_max = 2**nbits
     spots = np.arange(48)
-    #nch = 2 * spots.size
     ts_unit = 1 / meta['clock_frequency']
     if out_path is None:
         out_path = fname.with_suffix('.hdf5')
@@ -482,7 +483,7 @@ def save_timestamps_detectors_48ch(timestamps_m, h5file, chunksize=2**18,
         h5file.create_carray('/photon_data%d' % spot, 'detectors', obj=a_em,
                              **kws)
     h5file.flush()
-    ts_list , A_em = get_photon_data_arr(h5file, spots)
+    ts_list, A_em = get_photon_data_arr(h5file, spots)
     detectors_ids = np.empty(96, dtype=np.uint8)
     detectors_ids[0::2] = D_ch
     detectors_ids[1::2] = A_ch
@@ -505,8 +506,10 @@ def get_spot_ch_map_48spots():
 def get_photon_data_arr(h5file, spots):
     """Return two lists with timestamps and detectors arrays from `h5file`.
     """
-    ts_list = [h5file.get_node('/photon_data%d/timestamps' % ch) for ch in spots]
-    A_em = [h5file.get_node('/photon_data%d/detectors' % ch) for ch in spots]
+    ts_list = [h5file.get_node('/photon_data%d/timestamps' % ch)
+               for ch in spots]
+    A_em = [h5file.get_node('/photon_data%d/detectors' % ch)
+            for ch in spots]
     return ts_list, A_em
 
 
@@ -570,15 +573,18 @@ def get_detectors_group(h5file, dcr_fname=None):
         detectors_group['dcr'] = get_dcr(dcr_fname)
     return detectors_group
 
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Functions to create a Photon-HDF5
 #
+
 
 def create_ph5data_smFRET_48spots(
         orig_filename, h5file, ts_unit, metadata,
         excitation_wavelengths=(532e-9,),
         detection_wavelengths = (580e-9,),
-        software = 'LabVIEW MultiCounterProject/Multiple Counters UI v8_96 ch_Generic (NI-FPGA)',
+        software = ('LabVIEW MultiCounterProject/Multiple Counters UI v8_96 '
+                    'ch_Generic (NI-FPGA)'),
         setup = None):
     """
     Create a `dict` suitable for saving a Photon-HDF5 file.
@@ -605,7 +611,7 @@ def create_ph5data_smFRET_48spots(
             detection_wavelengths = detection_wavelengths,
             excitation_alternated = (False,),
             detectors = get_detectors_group(h5file)
-            )
+        )
 
     if setup != 'skip':
         data['setup'] = setup
@@ -696,7 +702,7 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration,
             excitation_cw = [True, True],
             modulated_excitation = True,
             excitation_alternated = [False, True]
-            )
+        )
         def_measurement_specs = dict(measurement_type='generic',
                                      alex_period=4096)
     else:
@@ -706,7 +712,7 @@ def populate_metadata_smFRET_48spots(metadata, orig_filename, acq_duration,
             excitation_cw = [True],
             modulated_excitation = False,
             excitation_alternated = [False],
-            )
+        )
         def_measurement_specs = dict(measurement_type='smFRET')
     # Add this for both smFRET and PAX
     def_measurement_specs['detectors_specs'] = {'spectral_ch1': 0,
