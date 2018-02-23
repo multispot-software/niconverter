@@ -406,7 +406,9 @@ def ni96ch_process_spots(fname, out_path=None, chunksize=2**18,
         ts_idx += chunksize
         ts_chunks, det_chunks = _inner_loop_spots(det, timestamps, t_start,
                                                   ts_max)
+        # Last chunk in each of the 48 spots
         last_ts_chunks, last_det_chunks = [], []
+        # Loop over each spot for current chunk
         for i, (ts, det) in enumerate(zip(timestamps_m, detectors_m)):
             last_two_ts_chunks = [prev_ts_chunks[i], ts_chunks[i]]
             last_two_det_chunks = [prev_det_chunks[i], det_chunks[i]]
@@ -443,6 +445,8 @@ def _fix_order(ispot, two_ts_chunks, two_det_chunks):
     assert len(two_ts_chunks) == 2
     for i in (0, 1):
         assert len(two_ts_chunks[i]) == len(two_det_chunks[i])
+    if two_ts_chunks[0].size == 0:
+        return
     # Check cross-chunk monotonicity
     if two_ts_chunks[1][0] < two_ts_chunks[0][-1]:
         ts_merged = np.hstack(two_ts_chunks)
